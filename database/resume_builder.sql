@@ -126,6 +126,7 @@ INSERT INTO templates (name, description, is_active) VALUES
 CREATE INDEX idx_user_id ON resumes(user_id);
 CREATE INDEX idx_resume_id_personal ON personal_info(resume_id);
 CREATE INDEX idx_resume_id_education ON education(resume_id);
+
 CREATE INDEX idx_resume_id_experience ON experience(resume_id);
 CREATE INDEX idx_resume_id_skills ON skills(resume_id);
 CREATE INDEX idx_resume_id_projects ON projects(resume_id);
