@@ -70,6 +70,7 @@ if (!$resume) {
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $section = $_POST['section'] ?? '';
+    $is_ajax_save = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
     
     // Personal Information
     if ($section === 'personal') {
@@ -224,12 +225,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     if (empty($errors)) {
+        if ($is_ajax_save) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true]);
+            exit();
+        }
+
         if ($section === 'personal' && ($_POST['redirect_after_save'] ?? '') === 'preview') {
             header("Location: preview.php?id=$resume_id");
             exit();
         }
 
         header("Location: resume_form.php?id=$resume_id&saved=1");
+        exit();
+    }
+
+    if ($is_ajax_save) {
+        http_response_code(422);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'errors' => $errors]);
         exit();
     }
 }
@@ -271,8 +285,8 @@ include 'includes/header.php';
         <p class="text-muted">Fill in the sections below to build your resume</p>
     </div>
     <div class="col-md-4 text-md-end">
-        <button type="submit" form="personalInfoForm" name="redirect_after_save" value="preview" class="btn btn-success">
-            <i class="bi bi-eye"></i> Save & Preview
+        <button type="button" id="saveAllPreviewTopButton" class="btn btn-success">
+            <i class="bi bi-eye"></i> Save All & Preview
         </button>
         <a href="dashboard.php" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Back
@@ -329,7 +343,7 @@ include 'includes/header.php';
     </div>
     <div class="collapse show" id="appearanceSection">
         <div class="card-body">
-            <form method="POST" action="">
+            <form method="POST" action="" data-save-before-preview="always">
                 <input type="hidden" name="section" value="appearance">
                 <div class="row g-3">
                     <div class="col-md-3">
@@ -391,7 +405,7 @@ include 'includes/header.php';
     </div>
     <div class="collapse show" id="personalSection">
         <div class="card-body">
-            <form method="POST" action="" enctype="multipart/form-data" id="personalInfoForm">
+            <form method="POST" action="" enctype="multipart/form-data" id="personalInfoForm" data-save-before-preview="always">
                 <input type="hidden" name="section" value="personal">
                 <input type="hidden" name="existing_photo_path" value="<?php echo htmlspecialchars($personal_info['photo_path'] ?? ''); ?>">
                 <div class="row">
@@ -406,7 +420,8 @@ include 'includes/header.php';
                                 <label class="form-check-label" for="remove_photo">Remove current photo</label>
                             </div>
                         <?php endif; ?>
-                        <input type="file" class="form-control" name="profile_photo" accept="image/jpeg,image/png,image/webp,image/gif">
+                        <input type="hidden" name="MAX_FILE_SIZE" value="2097152">
+                        <input type="file" class="form-control" name="profile_photo" id="profile_photo" accept="image/jpeg,image/png,image/webp,image/gif">
                         <small class="text-muted">JPG, PNG, WEBP, or GIF. Max 2MB.</small>
                     </div>
                     <div class="col-md-8">
@@ -503,7 +518,7 @@ include 'includes/header.php';
             </button>
             
             <div class="collapse" id="addEducation">
-                <form method="POST" action="">
+                <form method="POST" action="" data-save-before-preview="optional">
                     <input type="hidden" name="section" value="education">
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -588,7 +603,7 @@ include 'includes/header.php';
             </button>
             
             <div class="collapse" id="addExperience">
-                <form method="POST" action="">
+                <form method="POST" action="" data-save-before-preview="optional">
                     <input type="hidden" name="section" value="experience">
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -672,7 +687,7 @@ include 'includes/header.php';
             </button>
             
             <div class="collapse" id="addSkill">
-                <form method="POST" action="">
+                <form method="POST" action="" data-save-before-preview="optional">
                     <input type="hidden" name="section" value="skills">
                     <div class="row">
                         <div class="col-md-8 mb-3">
@@ -753,7 +768,7 @@ include 'includes/header.php';
             </button>
             
             <div class="collapse" id="addProject">
-                <form method="POST" action="">
+                <form method="POST" action="" data-save-before-preview="optional">
                     <input type="hidden" name="section" value="projects">
                     <div class="row">
                         <div class="col-md-8 mb-3">
@@ -844,7 +859,7 @@ include 'includes/header.php';
             </button>
             
             <div class="collapse" id="addCertification">
-                <form method="POST" action="">
+                <form method="POST" action="" data-save-before-preview="optional">
                     <input type="hidden" name="section" value="certifications">
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -884,11 +899,132 @@ include 'includes/header.php';
 <div class="card bg-light">
     <div class="card-body text-center">
         <h5 class="mb-3">Ready to see your resume?</h5>
-        <p class="text-muted mb-3">This saves your Personal Information before opening the preview.</p>
-        <button type="submit" form="personalInfoForm" name="redirect_after_save" value="preview" class="btn btn-success btn-lg">
-            <i class="bi bi-eye"></i> Save, Preview & Download Resume
+        <p class="text-muted mb-3">This saves Personal Information and every filled section before opening the preview.</p>
+        <button type="button" id="saveAllPreviewButton" class="btn btn-success btn-lg">
+            <i class="bi bi-eye"></i> Save, Preview & Download PDF
         </button>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const photoInput = document.getElementById('profile_photo');
+    const personalForm = document.getElementById('personalInfoForm');
+    const maxPhotoSize = 2 * 1024 * 1024;
+    const saveButtons = [
+        document.getElementById('saveAllPreviewButton'),
+        document.getElementById('saveAllPreviewTopButton')
+    ].filter(Boolean);
+    const previewUrl = 'preview.php?id=<?php echo $resume_id; ?>';
+
+    if (!photoInput || !personalForm) {
+        return;
+    }
+
+    function validatePhoto(event) {
+        const file = photoInput.files[0];
+
+        if (file && file.size > maxPhotoSize) {
+            if (event) {
+                event.preventDefault();
+            }
+            photoInput.value = '';
+            alert('Profile photo must be 2MB or smaller. Please choose a smaller image.');
+            return false;
+        }
+
+        return true;
+    }
+
+    function formHasUserInput(form) {
+        return Array.from(form.elements).some(function (field) {
+            if (!field.name || field.type === 'hidden' || field.type === 'submit' || field.type === 'button') {
+                return false;
+            }
+
+            if (field.type === 'file') {
+                return field.files && field.files.length > 0;
+            }
+
+            if (field.type === 'checkbox' || field.type === 'radio') {
+                return field.checked;
+            }
+
+            if (field.type === 'color') {
+                return true;
+            }
+
+            return String(field.value || '').trim() !== '';
+        });
+    }
+
+    async function saveForm(form) {
+        const response = await fetch(form.action || window.location.href, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+
+        if (!response.ok) {
+            let message = 'Could not save one of the sections. Please check the fields and try again.';
+
+            try {
+                const data = await response.json();
+                if (data.errors && data.errors.length) {
+                    message = data.errors.join('\n');
+                }
+            } catch (error) {
+                // Keep the default message if the response is not JSON.
+            }
+
+            throw new Error(message);
+        }
+    }
+
+    async function saveAllAndPreview(button) {
+        if (!validatePhoto()) {
+            return;
+        }
+
+        const forms = Array.from(document.querySelectorAll('form[data-save-before-preview]'));
+        const formsToSave = forms.filter(function (form) {
+            return form.dataset.saveBeforePreview === 'always' || formHasUserInput(form);
+        });
+
+        for (const form of formsToSave) {
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+        }
+
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+        try {
+            for (const form of formsToSave) {
+                await saveForm(form);
+            }
+
+            window.location.href = previewUrl;
+        } catch (error) {
+            alert(error.message);
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    }
+
+    personalForm.addEventListener('submit', validatePhoto);
+
+    saveButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            saveAllAndPreview(button);
+        });
+    });
+});
+</script>
 
 <?php include 'includes/footer.php'; ?>

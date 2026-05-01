@@ -128,10 +128,10 @@ CREATE TABLE templates (
 
 -- Insert default templates
 INSERT INTO templates (name, description, is_active) VALUES
-('Modern Professional', 'Clean and modern design with accent colors', TRUE),
-('Classic Elegant', 'Traditional layout with elegant typography', TRUE),
-('Creative Bold', 'Bold and creative design for creative professionals', TRUE),
-('Minimal Clean', 'Minimalist design focusing on content', TRUE);
+('Blue Sidebar Developer', 'Bold blue header with dark sidebar and circular photo', TRUE),
+('Slate Professional Timeline', 'Dark slate sidebar with clean timeline sections', TRUE),
+('Red Black Creative', 'Graphic red and black layout with strong section bars', TRUE),
+('Orange Graphic Designer', 'Orange and black editorial layout with large about section', TRUE);
 
 -- Create indexes for better performance
 CREATE INDEX idx_user_id ON resumes(user_id);

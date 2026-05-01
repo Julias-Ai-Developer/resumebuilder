@@ -207,12 +207,31 @@ function initializeDatabase($conn) {
     if ((int) $templates['total'] === 0) {
         $conn->query("
             INSERT INTO templates (name, description, is_active) VALUES
-            ('Modern Professional', 'Clean and modern design with accent colors', TRUE),
-            ('Classic Elegant', 'Traditional layout with elegant typography', TRUE),
-            ('Creative Bold', 'Bold and creative design for creative professionals', TRUE),
-            ('Minimal Clean', 'Minimalist design focusing on content', TRUE)
+            ('Blue Sidebar Developer', 'Bold blue header with dark sidebar and circular photo', TRUE),
+            ('Slate Professional Timeline', 'Dark slate sidebar with clean timeline sections', TRUE),
+            ('Red Black Creative', 'Graphic red and black layout with strong section bars', TRUE),
+            ('Orange Graphic Designer', 'Orange and black editorial layout with large about section', TRUE)
         ");
     }
+
+    $conn->query("
+        UPDATE templates SET
+            name = CASE id
+                WHEN 1 THEN 'Blue Sidebar Developer'
+                WHEN 2 THEN 'Slate Professional Timeline'
+                WHEN 3 THEN 'Red Black Creative'
+                WHEN 4 THEN 'Orange Graphic Designer'
+                ELSE name
+            END,
+            description = CASE id
+                WHEN 1 THEN 'Bold blue header with dark sidebar and circular photo'
+                WHEN 2 THEN 'Dark slate sidebar with clean timeline sections'
+                WHEN 3 THEN 'Graphic red and black layout with strong section bars'
+                WHEN 4 THEN 'Orange and black editorial layout with large about section'
+                ELSE description
+            END
+        WHERE id IN (1, 2, 3, 4)
+    ");
 }
 
 function databaseHasTables($conn) {

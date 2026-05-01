@@ -128,7 +128,7 @@ include 'includes/header.php';
                                             <i class="bi bi-eye"></i>
                                         </a>
                                         <a href="download.php?id=<?php echo $resume['id']; ?>" 
-                                           class="btn btn-outline-info" title="Download">
+                                           class="btn btn-outline-info" title="Download PDF">
                                             <i class="bi bi-download"></i>
                                         </a>
                                         <a href="dashboard.php?delete=<?php echo $resume['id']; ?>" 
