@@ -50,6 +50,16 @@ function getEmbeddedImageSrc($relativePath) {
 }
 
 $profile_photo_src = getEmbeddedImageSrc(is_array($personal_info) ? ($personal_info['photo_path'] ?? '') : '');
+$header_color = $resume['header_color'] ?? '#004346';
+$section_color = $resume['section_color'] ?? '#004346';
+$accent_color = $resume['accent_color'] ?? '#F0EDE5';
+$text_color = $resume['text_color'] ?? '#333333';
+$summary_color = $resume['summary_color'] ?? $section_color;
+$experience_color = $resume['experience_color'] ?? $section_color;
+$education_color = $resume['education_color'] ?? $section_color;
+$skills_color = $resume['skills_color'] ?? $section_color;
+$projects_color = $resume['projects_color'] ?? $section_color;
+$certifications_color = $resume['certifications_color'] ?? $section_color;
 
 // Generate HTML content
 ob_start();
@@ -62,12 +72,12 @@ ob_start();
         body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: <?php echo htmlspecialchars($text_color); ?>;
             margin: 0;
             padding: 20px;
         }
         .header {
-            background-color: #004346;
+            background-color: <?php echo htmlspecialchars($header_color); ?>;
             color: white;
             padding: 30px;
             margin: -20px -20px 20px -20px;
@@ -95,8 +105,8 @@ ob_start();
             margin-top: 10px;
         }
         .section-title {
-            color: #004346;
-            border-bottom: 2px solid #004346;
+            color: <?php echo htmlspecialchars($section_color); ?>;
+            border-bottom: 2px solid <?php echo htmlspecialchars($section_color); ?>;
             padding-bottom: 5px;
             margin-top: 25px;
             margin-bottom: 15px;
@@ -126,11 +136,17 @@ ob_start();
             gap: 10px;
         }
         .skill-item {
-            background-color: #F0EDE5;
+            background-color: <?php echo htmlspecialchars($accent_color); ?>;
             padding: 8px 12px;
-            border-left: 3px solid #004346;
+            border-left: 3px solid <?php echo htmlspecialchars($skills_color); ?>;
             display: inline-block;
         }
+        .summary-title { color: <?php echo htmlspecialchars($summary_color); ?>; border-bottom-color: <?php echo htmlspecialchars($summary_color); ?>; }
+        .experience-title { color: <?php echo htmlspecialchars($experience_color); ?>; border-bottom-color: <?php echo htmlspecialchars($experience_color); ?>; }
+        .education-title { color: <?php echo htmlspecialchars($education_color); ?>; border-bottom-color: <?php echo htmlspecialchars($education_color); ?>; }
+        .skills-title { color: <?php echo htmlspecialchars($skills_color); ?>; border-bottom-color: <?php echo htmlspecialchars($skills_color); ?>; }
+        .projects-title { color: <?php echo htmlspecialchars($projects_color); ?>; border-bottom-color: <?php echo htmlspecialchars($projects_color); ?>; }
+        .certifications-title { color: <?php echo htmlspecialchars($certifications_color); ?>; border-bottom-color: <?php echo htmlspecialchars($certifications_color); ?>; }
     </style>
 </head>
 <body>
@@ -143,13 +159,13 @@ ob_start();
                 <h1><?php echo htmlspecialchars($personal_info['full_name']); ?></h1>
                 <div class="contact-info">
                     <?php if ($personal_info['email']): ?>
-                        <?php echo htmlspecialchars($personal_info['email']); ?> |
+                        Email: <?php echo htmlspecialchars($personal_info['email']); ?> |
                     <?php endif; ?>
                     <?php if ($personal_info['phone']): ?>
-                        <?php echo htmlspecialchars($personal_info['phone']); ?> |
+                        Phone: <?php echo htmlspecialchars($personal_info['phone']); ?> |
                     <?php endif; ?>
                     <?php if ($personal_info['address']): ?>
-                        <?php echo htmlspecialchars($personal_info['address']); ?>
+                        Address: <?php echo htmlspecialchars($personal_info['address']); ?>
                     <?php endif; ?>
                     <?php if ($personal_info['linkedin'] || $personal_info['website']): ?>
                         <br>
@@ -165,13 +181,13 @@ ob_start();
         </div>
         
         <?php if ($personal_info['summary']): ?>
-            <div class="section-title">PROFESSIONAL SUMMARY</div>
+            <div class="section-title summary-title">PROFESSIONAL SUMMARY</div>
             <p><?php echo nl2br(htmlspecialchars($personal_info['summary'])); ?></p>
         <?php endif; ?>
     <?php endif; ?>
     
     <?php if (!empty($experience_list)): ?>
-        <div class="section-title">WORK EXPERIENCE</div>
+        <div class="section-title experience-title">WORK EXPERIENCE</div>
         <?php foreach ($experience_list as $exp): ?>
             <div class="item">
                 <div class="item-title"><?php echo htmlspecialchars($exp['position']); ?></div>
@@ -193,7 +209,7 @@ ob_start();
     <?php endif; ?>
     
     <?php if (!empty($education_list)): ?>
-        <div class="section-title">EDUCATION</div>
+        <div class="section-title education-title">EDUCATION</div>
         <?php foreach ($education_list as $edu): ?>
             <div class="item">
                 <div class="item-title">
@@ -215,7 +231,7 @@ ob_start();
     <?php endif; ?>
     
     <?php if (!empty($skills_list)): ?>
-        <div class="section-title">SKILLS</div>
+        <div class="section-title skills-title">SKILLS</div>
         <div class="skills-container">
             <?php foreach ($skills_list as $skill): ?>
                 <div class="skill-item">
@@ -227,7 +243,7 @@ ob_start();
     <?php endif; ?>
     
     <?php if (!empty($projects_list)): ?>
-        <div class="section-title">PROJECTS</div>
+        <div class="section-title projects-title">PROJECTS</div>
         <?php foreach ($projects_list as $project): ?>
             <div class="item">
                 <div class="item-title"><?php echo htmlspecialchars($project['project_name']); ?></div>
@@ -253,7 +269,7 @@ ob_start();
     <?php endif; ?>
     
     <?php if (!empty($certifications_list)): ?>
-        <div class="section-title">CERTIFICATIONS</div>
+        <div class="section-title certifications-title">CERTIFICATIONS</div>
         <?php foreach ($certifications_list as $cert): ?>
             <div class="item">
                 <div class="item-title"><?php echo htmlspecialchars($cert['certification_name']); ?></div>

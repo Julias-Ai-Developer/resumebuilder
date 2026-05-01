@@ -66,11 +66,32 @@ function initializeDatabase($conn) {
             user_id INT NOT NULL,
             title VARCHAR(100) NOT NULL,
             template_id INT DEFAULT 1,
+            header_color VARCHAR(7) DEFAULT '#004346',
+            section_color VARCHAR(7) DEFAULT '#004346',
+            accent_color VARCHAR(7) DEFAULT '#F0EDE5',
+            text_color VARCHAR(7) DEFAULT '#333333',
+            summary_color VARCHAR(7) DEFAULT '#004346',
+            experience_color VARCHAR(7) DEFAULT '#004346',
+            education_color VARCHAR(7) DEFAULT '#004346',
+            skills_color VARCHAR(7) DEFAULT '#004346',
+            projects_color VARCHAR(7) DEFAULT '#004346',
+            certifications_color VARCHAR(7) DEFAULT '#004346',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     ");
+
+    addColumnIfMissing($conn, 'resumes', 'header_color', "VARCHAR(7) DEFAULT '#004346' AFTER template_id");
+    addColumnIfMissing($conn, 'resumes', 'section_color', "VARCHAR(7) DEFAULT '#004346' AFTER header_color");
+    addColumnIfMissing($conn, 'resumes', 'accent_color', "VARCHAR(7) DEFAULT '#F0EDE5' AFTER section_color");
+    addColumnIfMissing($conn, 'resumes', 'text_color', "VARCHAR(7) DEFAULT '#333333' AFTER accent_color");
+    addColumnIfMissing($conn, 'resumes', 'summary_color', "VARCHAR(7) DEFAULT '#004346' AFTER text_color");
+    addColumnIfMissing($conn, 'resumes', 'experience_color', "VARCHAR(7) DEFAULT '#004346' AFTER summary_color");
+    addColumnIfMissing($conn, 'resumes', 'education_color', "VARCHAR(7) DEFAULT '#004346' AFTER experience_color");
+    addColumnIfMissing($conn, 'resumes', 'skills_color', "VARCHAR(7) DEFAULT '#004346' AFTER education_color");
+    addColumnIfMissing($conn, 'resumes', 'projects_color', "VARCHAR(7) DEFAULT '#004346' AFTER skills_color");
+    addColumnIfMissing($conn, 'resumes', 'certifications_color', "VARCHAR(7) DEFAULT '#004346' AFTER projects_color");
 
     $conn->query("
         CREATE TABLE IF NOT EXISTS personal_info (

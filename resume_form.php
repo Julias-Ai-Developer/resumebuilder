@@ -51,8 +51,12 @@ function handleProfilePhotoUpload($existingPhotoPath = '') {
     return 'assets/uploads/profile_photos/' . $fileName;
 }
 
+function sanitizeColor($value, $fallback) {
+    return preg_match('/^#[0-9A-Fa-f]{6}$/', $value) ? $value : $fallback;
+}
+
 // Verify resume belongs to user
-$verify_stmt = $conn->prepare("SELECT id, title, template_id FROM resumes WHERE id = ? AND user_id = ?");
+$verify_stmt = $conn->prepare("SELECT * FROM resumes WHERE id = ? AND user_id = ?");
 $verify_stmt->bind_param("ii", $resume_id, $user_id);
 $verify_stmt->execute();
 $resume = $verify_stmt->get_result()->fetch_assoc();
@@ -107,6 +111,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute();
             $stmt->close();
         }
+    }
+
+    // Appearance
+    if ($section === 'appearance') {
+        $header_color = sanitizeColor($_POST['header_color'] ?? '', '#004346');
+        $section_color = sanitizeColor($_POST['section_color'] ?? '', '#004346');
+        $accent_color = sanitizeColor($_POST['accent_color'] ?? '', '#F0EDE5');
+        $text_color = sanitizeColor($_POST['text_color'] ?? '', '#333333');
+        $summary_color = sanitizeColor($_POST['summary_color'] ?? '', $section_color);
+        $experience_color = sanitizeColor($_POST['experience_color'] ?? '', $section_color);
+        $education_color = sanitizeColor($_POST['education_color'] ?? '', $section_color);
+        $skills_color = sanitizeColor($_POST['skills_color'] ?? '', $section_color);
+        $projects_color = sanitizeColor($_POST['projects_color'] ?? '', $section_color);
+        $certifications_color = sanitizeColor($_POST['certifications_color'] ?? '', $section_color);
+
+        $stmt = $conn->prepare("
+            UPDATE resumes
+            SET header_color=?, section_color=?, accent_color=?, text_color=?, summary_color=?,
+                experience_color=?, education_color=?, skills_color=?, projects_color=?, certifications_color=?
+            WHERE id=? AND user_id=?
+        ");
+        $stmt->bind_param(
+            "ssssssssssii",
+            $header_color,
+            $section_color,
+            $accent_color,
+            $text_color,
+            $summary_color,
+            $experience_color,
+            $education_color,
+            $skills_color,
+            $projects_color,
+            $certifications_color,
+            $resume_id,
+            $user_id
+        );
+        $stmt->execute();
+        $stmt->close();
     }
     
     // Education
@@ -182,6 +224,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     if (empty($errors)) {
+        if ($section === 'personal' && ($_POST['redirect_after_save'] ?? '') === 'preview') {
+            header("Location: preview.php?id=$resume_id");
+            exit();
+        }
+
         header("Location: resume_form.php?id=$resume_id&saved=1");
         exit();
     }
@@ -224,9 +271,9 @@ include 'includes/header.php';
         <p class="text-muted">Fill in the sections below to build your resume</p>
     </div>
     <div class="col-md-4 text-md-end">
-        <a href="preview.php?id=<?php echo $resume_id; ?>" class="btn btn-success" target="_blank">
-            <i class="bi bi-eye"></i> Preview
-        </a>
+        <button type="submit" form="personalInfoForm" name="redirect_after_save" value="preview" class="btn btn-success">
+            <i class="bi bi-eye"></i> Save & Preview
+        </button>
         <a href="dashboard.php" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Back
         </a>
@@ -260,10 +307,79 @@ include 'includes/header.php';
 
 <?php if (isset($_GET['created'])): ?>
     <div class="alert alert-success alert-dismissible fade show">
-        <i class="bi bi-check-circle"></i> Resume created! Start adding your information below.
+        <i class="bi bi-check-circle"></i> Resume created! Start with Personal Information, then click Save Personal Info before previewing.
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 <?php endif; ?>
+
+<?php if (!$personal_info): ?>
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        Personal Information is not saved yet. Your preview will only show saved sections until you add your name, contact details, photo, and summary below.
+    </div>
+<?php endif; ?>
+
+<!-- Appearance Section -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-palette"></i> Appearance & Section Colors</h5>
+        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#appearanceSection">
+            <i class="bi bi-chevron-down"></i>
+        </button>
+    </div>
+    <div class="collapse show" id="appearanceSection">
+        <div class="card-body">
+            <form method="POST" action="">
+                <input type="hidden" name="section" value="appearance">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Header</label>
+                        <input type="color" class="form-control form-control-color" name="header_color" value="<?php echo htmlspecialchars($resume['header_color'] ?? '#004346'); ?>">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Default Section</label>
+                        <input type="color" class="form-control form-control-color" name="section_color" value="<?php echo htmlspecialchars($resume['section_color'] ?? '#004346'); ?>">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Accent Blocks</label>
+                        <input type="color" class="form-control form-control-color" name="accent_color" value="<?php echo htmlspecialchars($resume['accent_color'] ?? '#F0EDE5'); ?>">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Body Text</label>
+                        <input type="color" class="form-control form-control-color" name="text_color" value="<?php echo htmlspecialchars($resume['text_color'] ?? '#333333'); ?>">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Summary</label>
+                        <input type="color" class="form-control form-control-color" name="summary_color" value="<?php echo htmlspecialchars($resume['summary_color'] ?? '#004346'); ?>">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Experience</label>
+                        <input type="color" class="form-control form-control-color" name="experience_color" value="<?php echo htmlspecialchars($resume['experience_color'] ?? '#004346'); ?>">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Education</label>
+                        <input type="color" class="form-control form-control-color" name="education_color" value="<?php echo htmlspecialchars($resume['education_color'] ?? '#004346'); ?>">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Skills</label>
+                        <input type="color" class="form-control form-control-color" name="skills_color" value="<?php echo htmlspecialchars($resume['skills_color'] ?? '#004346'); ?>">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Projects</label>
+                        <input type="color" class="form-control form-control-color" name="projects_color" value="<?php echo htmlspecialchars($resume['projects_color'] ?? '#004346'); ?>">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Certifications</label>
+                        <input type="color" class="form-control form-control-color" name="certifications_color" value="<?php echo htmlspecialchars($resume['certifications_color'] ?? '#004346'); ?>">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">
+                    <i class="bi bi-save"></i> Save Colors
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
 
 <!-- Personal Information Section -->
 <div class="card mb-4">
@@ -275,7 +391,7 @@ include 'includes/header.php';
     </div>
     <div class="collapse show" id="personalSection">
         <div class="card-body">
-            <form method="POST" action="" enctype="multipart/form-data">
+            <form method="POST" action="" enctype="multipart/form-data" id="personalInfoForm">
                 <input type="hidden" name="section" value="personal">
                 <input type="hidden" name="existing_photo_path" value="<?php echo htmlspecialchars($personal_info['photo_path'] ?? ''); ?>">
                 <div class="row">
@@ -768,9 +884,10 @@ include 'includes/header.php';
 <div class="card bg-light">
     <div class="card-body text-center">
         <h5 class="mb-3">Ready to see your resume?</h5>
-        <a href="preview.php?id=<?php echo $resume_id; ?>" class="btn btn-success btn-lg" target="_blank">
-            <i class="bi bi-eye"></i> Preview & Download Resume
-        </a>
+        <p class="text-muted mb-3">This saves your Personal Information before opening the preview.</p>
+        <button type="submit" form="personalInfoForm" name="redirect_after_save" value="preview" class="btn btn-success btn-lg">
+            <i class="bi bi-eye"></i> Save, Preview & Download Resume
+        </button>
     </div>
 </div>
 

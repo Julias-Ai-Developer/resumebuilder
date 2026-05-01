@@ -25,6 +25,28 @@ $skills_list = $conn->query("SELECT * FROM skills WHERE resume_id = $resume_id O
 $projects_list = $conn->query("SELECT * FROM projects WHERE resume_id = $resume_id ORDER BY start_date DESC")->fetch_all(MYSQLI_ASSOC);
 $certifications_list = $conn->query("SELECT * FROM certifications WHERE resume_id = $resume_id ORDER BY issue_date DESC")->fetch_all(MYSQLI_ASSOC);
 $is_print_preview = isset($_GET['print']);
+$has_resume_content = $personal_info
+    || !empty($education_list)
+    || !empty($experience_list)
+    || !empty($skills_list)
+    || !empty($projects_list)
+    || !empty($certifications_list);
+$display_name = $personal_info && !empty($personal_info['full_name'])
+    ? $personal_info['full_name']
+    : $resume['title'];
+$header_color = $resume['header_color'] ?? '#004346';
+$section_color = $resume['section_color'] ?? '#004346';
+$accent_color = $resume['accent_color'] ?? '#F0EDE5';
+$text_color = $resume['text_color'] ?? '#333333';
+$summary_color = $resume['summary_color'] ?? $section_color;
+$experience_color = $resume['experience_color'] ?? $section_color;
+$education_color = $resume['education_color'] ?? $section_color;
+$skills_color = $resume['skills_color'] ?? $section_color;
+$projects_color = $resume['projects_color'] ?? $section_color;
+$certifications_color = $resume['certifications_color'] ?? $section_color;
+$photo_path = ($personal_info && !empty($personal_info['photo_path']) && is_file(__DIR__ . '/' . $personal_info['photo_path']))
+    ? $personal_info['photo_path']
+    : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -36,12 +58,21 @@ $is_print_preview = isset($_GET['print']);
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
         :root {
-            --primary-color: #004346;
-            --accent-color: #F0EDE5;
+            --primary-color: <?php echo htmlspecialchars($section_color); ?>;
+            --header-color: <?php echo htmlspecialchars($header_color); ?>;
+            --accent-color: <?php echo htmlspecialchars($accent_color); ?>;
+            --text-color: <?php echo htmlspecialchars($text_color); ?>;
+            --summary-color: <?php echo htmlspecialchars($summary_color); ?>;
+            --experience-color: <?php echo htmlspecialchars($experience_color); ?>;
+            --education-color: <?php echo htmlspecialchars($education_color); ?>;
+            --skills-color: <?php echo htmlspecialchars($skills_color); ?>;
+            --projects-color: <?php echo htmlspecialchars($projects_color); ?>;
+            --certifications-color: <?php echo htmlspecialchars($certifications_color); ?>;
         }
         
         body {
             background-color: #e0e0e0;
+            color: var(--text-color);
         }
         
         .resume-container {
@@ -54,7 +85,7 @@ $is_print_preview = isset($_GET['print']);
         }
         
         .resume-header {
-            background-color: var(--primary-color);
+            background-color: var(--header-color);
             color: white;
             padding: 40px;
             display: flex;
@@ -81,6 +112,11 @@ $is_print_preview = isset($_GET['print']);
             font-size: 2.5rem;
             margin-bottom: 10px;
         }
+
+        .resume-subtitle {
+            opacity: 0.82;
+            margin: 0;
+        }
         
         .contact-info {
             display: flex;
@@ -94,6 +130,10 @@ $is_print_preview = isset($_GET['print']);
             display: inline-flex;
             align-items: center;
             gap: 5px;
+        }
+
+        .contact-label {
+            font-weight: 700;
         }
         
         .resume-content {
@@ -148,6 +188,51 @@ $is_print_preview = isset($_GET['print']);
             border-radius: 5px;
             border-left: 3px solid var(--primary-color);
         }
+
+        .summary-title {
+            color: var(--summary-color);
+            border-bottom-color: var(--summary-color);
+        }
+
+        .experience-title {
+            color: var(--experience-color);
+            border-bottom-color: var(--experience-color);
+        }
+
+        .education-title {
+            color: var(--education-color);
+            border-bottom-color: var(--education-color);
+        }
+
+        .skills-title {
+            color: var(--skills-color);
+            border-bottom-color: var(--skills-color);
+        }
+
+        .projects-title {
+            color: var(--projects-color);
+            border-bottom-color: var(--projects-color);
+        }
+
+        .certifications-title {
+            color: var(--certifications-color);
+            border-bottom-color: var(--certifications-color);
+        }
+
+        .empty-preview {
+            min-height: 160mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #666;
+        }
+
+        .empty-preview i {
+            color: var(--primary-color);
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
         
         .toolbar {
             position: fixed;
@@ -165,6 +250,11 @@ $is_print_preview = isset($_GET['print']);
             margin: 18px auto 0;
             color: #555;
             font-size: 0.95rem;
+        }
+
+        .preview-warning {
+            max-width: 210mm;
+            margin: 18px auto 0;
         }
 
         @page {
@@ -190,6 +280,10 @@ $is_print_preview = isset($_GET['print']);
             }
 
             .print-preview-note {
+                display: none;
+            }
+
+            .preview-warning {
                 display: none;
             }
         }
@@ -232,45 +326,68 @@ $is_print_preview = isset($_GET['print']);
         </div>
     <?php endif; ?>
 
+    <?php if (!$personal_info): ?>
+        <div class="alert alert-warning preview-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            Personal Information has not been saved yet. The preview is only showing sections you have saved, such as Projects.
+            <a href="resume_form.php?id=<?php echo $resume_id; ?>" class="alert-link">Add your name, email, phone, photo, and summary</a>.
+        </div>
+    <?php endif; ?>
+
     <div class="resume-container">
-        <?php if ($personal_info): ?>
-            <div class="resume-header">
-                <?php if (!empty($personal_info['photo_path'])): ?>
-                    <img src="<?php echo htmlspecialchars($personal_info['photo_path']); ?>" alt="Profile photo" class="resume-photo">
-                <?php endif; ?>
-                <div class="resume-heading">
-                    <h1><?php echo htmlspecialchars($personal_info['full_name']); ?></h1>
+        <div class="resume-header">
+            <?php if ($photo_path): ?>
+                <img src="<?php echo htmlspecialchars($photo_path); ?>" alt="Profile photo" class="resume-photo">
+            <?php endif; ?>
+            <div class="resume-heading">
+                <h1><?php echo htmlspecialchars($display_name); ?></h1>
+                <?php if (!$personal_info): ?>
+                    <p class="resume-subtitle">Personal information not saved yet</p>
+                <?php else: ?>
                     <div class="contact-info">
                         <?php if ($personal_info['email']): ?>
-                            <span><i class="bi bi-envelope"></i> <?php echo htmlspecialchars($personal_info['email']); ?></span>
+                            <span><i class="bi bi-envelope"></i> <span class="contact-label">Email:</span> <?php echo htmlspecialchars($personal_info['email']); ?></span>
                         <?php endif; ?>
                         <?php if ($personal_info['phone']): ?>
-                            <span><i class="bi bi-telephone"></i> <?php echo htmlspecialchars($personal_info['phone']); ?></span>
+                            <span><i class="bi bi-telephone"></i> <span class="contact-label">Phone:</span> <?php echo htmlspecialchars($personal_info['phone']); ?></span>
                         <?php endif; ?>
                         <?php if ($personal_info['address']): ?>
-                            <span><i class="bi bi-geo-alt"></i> <?php echo htmlspecialchars($personal_info['address']); ?></span>
+                            <span><i class="bi bi-geo-alt"></i> <span class="contact-label">Address:</span> <?php echo htmlspecialchars($personal_info['address']); ?></span>
                         <?php endif; ?>
                     </div>
                     <div class="contact-info">
                         <?php if ($personal_info['linkedin']): ?>
-                            <span><i class="bi bi-linkedin"></i> <?php echo htmlspecialchars($personal_info['linkedin']); ?></span>
+                            <span><i class="bi bi-linkedin"></i> <span class="contact-label">LinkedIn:</span> <?php echo htmlspecialchars($personal_info['linkedin']); ?></span>
                         <?php endif; ?>
                         <?php if ($personal_info['website']): ?>
-                            <span><i class="bi bi-globe"></i> <?php echo htmlspecialchars($personal_info['website']); ?></span>
+                            <span><i class="bi bi-globe"></i> <span class="contact-label">Website:</span> <?php echo htmlspecialchars($personal_info['website']); ?></span>
                         <?php endif; ?>
                     </div>
-                </div>
+                <?php endif; ?>
             </div>
-        <?php endif; ?>
+        </div>
 
         <div class="resume-content">
+                <?php if (!$has_resume_content): ?>
+                    <div class="empty-preview">
+                        <div>
+                            <i class="bi bi-file-earmark-text"></i>
+                            <h2 class="h4">No resume details yet</h2>
+                            <p class="mb-3">Add personal information, education, experience, skills, projects, or certifications to see them here.</p>
+                            <a href="resume_form.php?id=<?php echo $resume_id; ?>" class="btn btn-primary">
+                                <i class="bi bi-pencil"></i> Add Details
+                            </a>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <?php if ($personal_info && $personal_info['summary']): ?>
-                    <h2 class="section-title">Professional Summary</h2>
+                    <h2 class="section-title summary-title">Professional Summary</h2>
                     <p><?php echo nl2br(htmlspecialchars($personal_info['summary'])); ?></p>
                 <?php endif; ?>
         
                 <?php if (!empty($experience_list)): ?>
-                    <h2 class="section-title"><i class="bi bi-briefcase"></i> Work Experience</h2>
+                    <h2 class="section-title experience-title"><i class="bi bi-briefcase"></i> Work Experience</h2>
                     <?php foreach ($experience_list as $exp): ?>
                         <div class="experience-item">
                             <div class="item-title"><?php echo htmlspecialchars($exp['position']); ?></div>
@@ -292,7 +409,7 @@ $is_print_preview = isset($_GET['print']);
                 <?php endif; ?>
                 
                 <?php if (!empty($education_list)): ?>
-                    <h2 class="section-title"><i class="bi bi-mortarboard"></i> Education</h2>
+                    <h2 class="section-title education-title"><i class="bi bi-mortarboard"></i> Education</h2>
                     <?php foreach ($education_list as $edu): ?>
                         <div class="education-item">
                             <div class="item-title"><?php echo htmlspecialchars($edu['degree']); ?> 
@@ -313,7 +430,7 @@ $is_print_preview = isset($_GET['print']);
                 <?php endif; ?>
                 
                 <?php if (!empty($skills_list)): ?>
-                    <h2 class="section-title"><i class="bi bi-tools"></i> Skills</h2>
+                    <h2 class="section-title skills-title"><i class="bi bi-tools"></i> Skills</h2>
                     <div class="skills-grid">
                         <?php foreach ($skills_list as $skill): ?>
                             <div class="skill-item">
@@ -325,7 +442,7 @@ $is_print_preview = isset($_GET['print']);
                 <?php endif; ?>
                 
                 <?php if (!empty($projects_list)): ?>
-                    <h2 class="section-title"><i class="bi bi-kanban"></i> Projects</h2>
+                    <h2 class="section-title projects-title"><i class="bi bi-kanban"></i> Projects</h2>
                     <?php foreach ($projects_list as $project): ?>
                         <div class="project-item">
                             <div class="item-title"><?php echo htmlspecialchars($project['project_name']); ?></div>
@@ -349,7 +466,7 @@ $is_print_preview = isset($_GET['print']);
                 <?php endif; ?>
                 
                 <?php if (!empty($certifications_list)): ?>
-                    <h2 class="section-title"><i class="bi bi-award"></i> Certifications</h2>
+                    <h2 class="section-title certifications-title"><i class="bi bi-award"></i> Certifications</h2>
                     <?php foreach ($certifications_list as $cert): ?>
                         <div class="certification-item">
                             <div class="item-title"><?php echo htmlspecialchars($cert['certification_name']); ?></div>
