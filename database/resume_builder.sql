@@ -34,6 +34,7 @@ CREATE TABLE personal_info (
     address TEXT,
     linkedin VARCHAR(255),
     website VARCHAR(255),
+    photo_path VARCHAR(255),
     summary TEXT,
     FOREIGN KEY (resume_id) REFERENCES resumes(id) ON DELETE CASCADE
 );

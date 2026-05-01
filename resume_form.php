@@ -4,6 +4,52 @@ requireLogin();
 
 $user_id = getCurrentUserId();
 $resume_id = intval($_GET['id'] ?? 0);
+$errors = [];
+
+function handleProfilePhotoUpload($existingPhotoPath = '') {
+    if (!isset($_FILES['profile_photo']) || $_FILES['profile_photo']['error'] === UPLOAD_ERR_NO_FILE) {
+        return $existingPhotoPath;
+    }
+
+    if ($_FILES['profile_photo']['error'] !== UPLOAD_ERR_OK) {
+        throw new Exception('Photo upload failed. Please choose another image.');
+    }
+
+    if ($_FILES['profile_photo']['size'] > 2 * 1024 * 1024) {
+        throw new Exception('Profile photo must be 2MB or smaller.');
+    }
+
+    $allowedTypes = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+    ];
+    if (function_exists('mime_content_type')) {
+        $fileType = mime_content_type($_FILES['profile_photo']['tmp_name']);
+    } else {
+        $imageInfo = getimagesize($_FILES['profile_photo']['tmp_name']);
+        $fileType = $imageInfo['mime'] ?? '';
+    }
+
+    if (!isset($allowedTypes[$fileType])) {
+        throw new Exception('Profile photo must be a JPG, PNG, WEBP, or GIF image.');
+    }
+
+    $uploadDir = __DIR__ . '/assets/uploads/profile_photos';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+
+    $fileName = 'profile_' . bin2hex(random_bytes(12)) . '.' . $allowedTypes[$fileType];
+    $targetPath = $uploadDir . '/' . $fileName;
+
+    if (!move_uploaded_file($_FILES['profile_photo']['tmp_name'], $targetPath)) {
+        throw new Exception('Could not save the uploaded profile photo.');
+    }
+
+    return 'assets/uploads/profile_photos/' . $fileName;
+}
 
 // Verify resume belongs to user
 $verify_stmt = $conn->prepare("SELECT id, title, template_id FROM resumes WHERE id = ? AND user_id = ?");
@@ -30,23 +76,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $linkedin = sanitize($_POST['linkedin']);
         $website = sanitize($_POST['website']);
         $summary = sanitize($_POST['summary']);
-        
-        // Check if personal info exists
-        $check = $conn->prepare("SELECT id FROM personal_info WHERE resume_id = ?");
-        $check->bind_param("i", $resume_id);
-        $check->execute();
-        $exists = $check->get_result()->num_rows > 0;
-        $check->close();
-        
-        if ($exists) {
-            $stmt = $conn->prepare("UPDATE personal_info SET full_name=?, email=?, phone=?, address=?, linkedin=?, website=?, summary=? WHERE resume_id=?");
-            $stmt->bind_param("sssssssi", $full_name, $email, $phone, $address, $linkedin, $website, $summary, $resume_id);
-        } else {
-            $stmt = $conn->prepare("INSERT INTO personal_info (resume_id, full_name, email, phone, address, linkedin, website, summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("isssssss", $resume_id, $full_name, $email, $phone, $address, $linkedin, $website, $summary);
+        $existing_photo_path = sanitize($_POST['existing_photo_path'] ?? '');
+        $photo_path = $existing_photo_path;
+
+        try {
+            if (isset($_POST['remove_photo'])) {
+                $photo_path = '';
+            } else {
+                $photo_path = handleProfilePhotoUpload($existing_photo_path);
+            }
+        } catch (Exception $e) {
+            $errors[] = $e->getMessage();
         }
-        $stmt->execute();
-        $stmt->close();
+        
+        if (empty($errors)) {
+            // Check if personal info exists
+            $check = $conn->prepare("SELECT id FROM personal_info WHERE resume_id = ?");
+            $check->bind_param("i", $resume_id);
+            $check->execute();
+            $exists = $check->get_result()->num_rows > 0;
+            $check->close();
+            
+            if ($exists) {
+                $stmt = $conn->prepare("UPDATE personal_info SET full_name=?, email=?, phone=?, address=?, linkedin=?, website=?, photo_path=?, summary=? WHERE resume_id=?");
+                $stmt->bind_param("ssssssssi", $full_name, $email, $phone, $address, $linkedin, $website, $photo_path, $summary, $resume_id);
+            } else {
+                $stmt = $conn->prepare("INSERT INTO personal_info (resume_id, full_name, email, phone, address, linkedin, website, photo_path, summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("issssssss", $resume_id, $full_name, $email, $phone, $address, $linkedin, $website, $photo_path, $summary);
+            }
+            $stmt->execute();
+            $stmt->close();
+        }
     }
     
     // Education
@@ -121,8 +181,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
     }
     
-    header("Location: resume_form.php?id=$resume_id&saved=1");
-    exit();
+    if (empty($errors)) {
+        header("Location: resume_form.php?id=$resume_id&saved=1");
+        exit();
+    }
 }
 
 // Handle deletions
@@ -178,6 +240,17 @@ include 'includes/header.php';
     </div>
 <?php endif; ?>
 
+<?php if (!empty($errors)): ?>
+    <div class="alert alert-danger alert-dismissible fade show">
+        <ul class="mb-0">
+            <?php foreach ($errors as $error): ?>
+                <li><?php echo htmlspecialchars($error); ?></li>
+            <?php endforeach; ?>
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+<?php endif; ?>
+
 <?php if (isset($_GET['deleted'])): ?>
     <div class="alert alert-info alert-dismissible fade show">
         <i class="bi bi-trash"></i> Item deleted successfully!
@@ -202,9 +275,26 @@ include 'includes/header.php';
     </div>
     <div class="collapse show" id="personalSection">
         <div class="card-body">
-            <form method="POST" action="">
+            <form method="POST" action="" enctype="multipart/form-data">
                 <input type="hidden" name="section" value="personal">
+                <input type="hidden" name="existing_photo_path" value="<?php echo htmlspecialchars($personal_info['photo_path'] ?? ''); ?>">
                 <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Profile Photo</label>
+                        <?php if (!empty($personal_info['photo_path'])): ?>
+                            <div class="mb-2">
+                                <img src="<?php echo htmlspecialchars($personal_info['photo_path']); ?>" alt="Profile photo" class="rounded border" style="width: 120px; height: 120px; object-fit: cover;">
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="remove_photo" id="remove_photo">
+                                <label class="form-check-label" for="remove_photo">Remove current photo</label>
+                            </div>
+                        <?php endif; ?>
+                        <input type="file" class="form-control" name="profile_photo" accept="image/jpeg,image/png,image/webp,image/gif">
+                        <small class="text-muted">JPG, PNG, WEBP, or GIF. Max 2MB.</small>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Full Name *</label>
                         <input type="text" class="form-control" name="full_name" 
@@ -236,6 +326,8 @@ include 'includes/header.php';
                         <input type="url" class="form-control" name="website" 
                                value="<?php echo htmlspecialchars($personal_info['website'] ?? ''); ?>" 
                                placeholder="https://yourwebsite.com">
+                    </div>
+                        </div>
                     </div>
                     <div class="col-12 mb-3">
                         <label class="form-label fw-bold">Professional Summary</label>

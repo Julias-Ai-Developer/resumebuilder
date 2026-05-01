@@ -39,7 +39,7 @@ include 'includes/header.php';
         <h2 class="fw-bold" style="color: var(--primary-color);">
             <i class="bi bi-speedometer2"></i> My Dashboard
         </h2>
-        <p class="text-muted">Welcome back, <?php echo htmlspecialchars($_SESSION['username']); ?>!</p>
+        <p class="text-muted">Welcome back, <?php echo htmlspecialchars(getCurrentUsername()); ?>!</p>
     </div>
     <div class="col-md-4 text-md-end">
         <a href="choose_template.php" class="btn btn-primary">

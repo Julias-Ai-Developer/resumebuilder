@@ -24,6 +24,7 @@ $experience_list = $conn->query("SELECT * FROM experience WHERE resume_id = $res
 $skills_list = $conn->query("SELECT * FROM skills WHERE resume_id = $resume_id ORDER BY proficiency DESC")->fetch_all(MYSQLI_ASSOC);
 $projects_list = $conn->query("SELECT * FROM projects WHERE resume_id = $resume_id ORDER BY start_date DESC")->fetch_all(MYSQLI_ASSOC);
 $certifications_list = $conn->query("SELECT * FROM certifications WHERE resume_id = $resume_id ORDER BY issue_date DESC")->fetch_all(MYSQLI_ASSOC);
+$is_print_preview = isset($_GET['print']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -44,7 +45,9 @@ $certifications_list = $conn->query("SELECT * FROM certifications WHERE resume_i
         }
         
         .resume-container {
-            max-width: 850px;
+            width: 210mm;
+            max-width: calc(100vw - 40px);
+            min-height: 297mm;
             margin: 20px auto;
             background: white;
             box-shadow: 0 0 20px rgba(0,0,0,0.2);
@@ -54,7 +57,24 @@ $certifications_list = $conn->query("SELECT * FROM certifications WHERE resume_i
             background-color: var(--primary-color);
             color: white;
             padding: 40px;
-            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            text-align: left;
+        }
+
+        .resume-photo {
+            width: 128px;
+            height: 128px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid rgba(255,255,255,0.9);
+            flex: 0 0 auto;
+        }
+
+        .resume-heading {
+            min-width: 0;
         }
         
         .resume-header h1 {
@@ -64,7 +84,7 @@ $certifications_list = $conn->query("SELECT * FROM certifications WHERE resume_i
         
         .contact-info {
             display: flex;
-            justify-content: center;
+            justify-content: flex-start;
             flex-wrap: wrap;
             gap: 20px;
             margin-top: 15px;
@@ -139,6 +159,18 @@ $certifications_list = $conn->query("SELECT * FROM certifications WHERE resume_i
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
             z-index: 1000;
         }
+
+        .print-preview-note {
+            max-width: 210mm;
+            margin: 18px auto 0;
+            color: #555;
+            font-size: 0.95rem;
+        }
+
+        @page {
+            size: A4;
+            margin: 12mm;
+        }
         
         @media print {
             body {
@@ -149,10 +181,31 @@ $certifications_list = $conn->query("SELECT * FROM certifications WHERE resume_i
                 box-shadow: none;
                 margin: 0;
                 max-width: 100%;
+                width: 100%;
+                min-height: auto;
             }
             
             .toolbar {
                 display: none;
+            }
+
+            .print-preview-note {
+                display: none;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .resume-header {
+                display: block;
+                text-align: center;
+            }
+
+            .resume-photo {
+                margin-bottom: 16px;
+            }
+
+            .contact-info {
+                justify-content: center;
             }
         }
     </style>
@@ -165,42 +218,56 @@ $certifications_list = $conn->query("SELECT * FROM certifications WHERE resume_i
         <a href="download.php?id=<?php echo $resume_id; ?>" class="btn btn-sm btn-success">
             <i class="bi bi-download"></i> Download
         </a>
+        <a href="preview.php?id=<?php echo $resume_id; ?>&print=1" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-file-earmark-text"></i> Print Preview
+        </a>
         <button onclick="window.print()" class="btn btn-sm btn-info">
             <i class="bi bi-printer"></i> Print
         </button>
     </div>
 
+    <?php if ($is_print_preview): ?>
+        <div class="print-preview-note">
+            Print preview uses an A4 page frame. Use the Print button, then choose Save as PDF or your printer.
+        </div>
+    <?php endif; ?>
+
     <div class="resume-container">
         <?php if ($personal_info): ?>
             <div class="resume-header">
-                <h1><?php echo htmlspecialchars($personal_info['full_name']); ?></h1>
-                <div class="contact-info">
-                    <?php if ($personal_info['email']): ?>
-                        <span><i class="bi bi-envelope"></i> <?php echo htmlspecialchars($personal_info['email']); ?></span>
-                    <?php endif; ?>
-                    <?php if ($personal_info['phone']): ?>
-                        <span><i class="bi bi-telephone"></i> <?php echo htmlspecialchars($personal_info['phone']); ?></span>
-                    <?php endif; ?>
-                    <?php if ($personal_info['address']): ?>
-                        <span><i class="bi bi-geo-alt"></i> <?php echo htmlspecialchars($personal_info['address']); ?></span>
-                    <?php endif; ?>
-                </div>
-                <div class="contact-info">
-                    <?php if ($personal_info['linkedin']): ?>
-                        <span><i class="bi bi-linkedin"></i> <?php echo htmlspecialchars($personal_info['linkedin']); ?></span>
-                    <?php endif; ?>
-                    <?php if ($personal_info['website']): ?>
-                        <span><i class="bi bi-globe"></i> <?php echo htmlspecialchars($personal_info['website']); ?></span>
-                    <?php endif; ?>
+                <?php if (!empty($personal_info['photo_path'])): ?>
+                    <img src="<?php echo htmlspecialchars($personal_info['photo_path']); ?>" alt="Profile photo" class="resume-photo">
+                <?php endif; ?>
+                <div class="resume-heading">
+                    <h1><?php echo htmlspecialchars($personal_info['full_name']); ?></h1>
+                    <div class="contact-info">
+                        <?php if ($personal_info['email']): ?>
+                            <span><i class="bi bi-envelope"></i> <?php echo htmlspecialchars($personal_info['email']); ?></span>
+                        <?php endif; ?>
+                        <?php if ($personal_info['phone']): ?>
+                            <span><i class="bi bi-telephone"></i> <?php echo htmlspecialchars($personal_info['phone']); ?></span>
+                        <?php endif; ?>
+                        <?php if ($personal_info['address']): ?>
+                            <span><i class="bi bi-geo-alt"></i> <?php echo htmlspecialchars($personal_info['address']); ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="contact-info">
+                        <?php if ($personal_info['linkedin']): ?>
+                            <span><i class="bi bi-linkedin"></i> <?php echo htmlspecialchars($personal_info['linkedin']); ?></span>
+                        <?php endif; ?>
+                        <?php if ($personal_info['website']): ?>
+                            <span><i class="bi bi-globe"></i> <?php echo htmlspecialchars($personal_info['website']); ?></span>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
-            
-            <div class="resume-content">
-                <?php if ($personal_info['summary']): ?>
+        <?php endif; ?>
+
+        <div class="resume-content">
+                <?php if ($personal_info && $personal_info['summary']): ?>
                     <h2 class="section-title">Professional Summary</h2>
                     <p><?php echo nl2br(htmlspecialchars($personal_info['summary'])); ?></p>
                 <?php endif; ?>
-        <?php endif; ?>
         
                 <?php if (!empty($experience_list)): ?>
                     <h2 class="section-title"><i class="bi bi-briefcase"></i> Work Experience</h2>

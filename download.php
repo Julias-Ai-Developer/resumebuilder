@@ -24,6 +24,33 @@ $skills_list = $conn->query("SELECT * FROM skills WHERE resume_id = $resume_id O
 $projects_list = $conn->query("SELECT * FROM projects WHERE resume_id = $resume_id ORDER BY start_date DESC")->fetch_all(MYSQLI_ASSOC);
 $certifications_list = $conn->query("SELECT * FROM certifications WHERE resume_id = $resume_id ORDER BY issue_date DESC")->fetch_all(MYSQLI_ASSOC);
 
+function getEmbeddedImageSrc($relativePath) {
+    if (empty($relativePath)) {
+        return '';
+    }
+
+    $fullPath = __DIR__ . '/' . $relativePath;
+    if (!is_file($fullPath)) {
+        return '';
+    }
+
+    if (function_exists('mime_content_type')) {
+        $mimeType = mime_content_type($fullPath);
+    } else {
+        $imageInfo = getimagesize($fullPath);
+        $mimeType = $imageInfo['mime'] ?? '';
+    }
+    $imageData = file_get_contents($fullPath);
+
+    if (!$mimeType || $imageData === false) {
+        return '';
+    }
+
+    return 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
+}
+
+$profile_photo_src = getEmbeddedImageSrc(is_array($personal_info) ? ($personal_info['photo_path'] ?? '') : '');
+
 // Generate HTML content
 ob_start();
 ?>
@@ -43,8 +70,21 @@ ob_start();
             background-color: #004346;
             color: white;
             padding: 30px;
-            text-align: center;
             margin: -20px -20px 20px -20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+        .profile-photo {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid white;
+        }
+        .header-content {
+            text-align: left;
         }
         h1 {
             margin: 0 0 10px 0;
@@ -96,26 +136,31 @@ ob_start();
 <body>
     <?php if ($personal_info): ?>
         <div class="header">
-            <h1><?php echo htmlspecialchars($personal_info['full_name']); ?></h1>
-            <div class="contact-info">
-                <?php if ($personal_info['email']): ?>
-                    <?php echo htmlspecialchars($personal_info['email']); ?> |
-                <?php endif; ?>
-                <?php if ($personal_info['phone']): ?>
-                    <?php echo htmlspecialchars($personal_info['phone']); ?> |
-                <?php endif; ?>
-                <?php if ($personal_info['address']): ?>
-                    <?php echo htmlspecialchars($personal_info['address']); ?>
-                <?php endif; ?>
-                <?php if ($personal_info['linkedin'] || $personal_info['website']): ?>
-                    <br>
-                    <?php if ($personal_info['linkedin']): ?>
-                        LinkedIn: <?php echo htmlspecialchars($personal_info['linkedin']); ?>
+            <?php if ($profile_photo_src): ?>
+                <img src="<?php echo htmlspecialchars($profile_photo_src); ?>" alt="Profile photo" class="profile-photo">
+            <?php endif; ?>
+            <div class="header-content">
+                <h1><?php echo htmlspecialchars($personal_info['full_name']); ?></h1>
+                <div class="contact-info">
+                    <?php if ($personal_info['email']): ?>
+                        <?php echo htmlspecialchars($personal_info['email']); ?> |
                     <?php endif; ?>
-                    <?php if ($personal_info['website']): ?>
-                        | Website: <?php echo htmlspecialchars($personal_info['website']); ?>
+                    <?php if ($personal_info['phone']): ?>
+                        <?php echo htmlspecialchars($personal_info['phone']); ?> |
                     <?php endif; ?>
-                <?php endif; ?>
+                    <?php if ($personal_info['address']): ?>
+                        <?php echo htmlspecialchars($personal_info['address']); ?>
+                    <?php endif; ?>
+                    <?php if ($personal_info['linkedin'] || $personal_info['website']): ?>
+                        <br>
+                        <?php if ($personal_info['linkedin']): ?>
+                            LinkedIn: <?php echo htmlspecialchars($personal_info['linkedin']); ?>
+                        <?php endif; ?>
+                        <?php if ($personal_info['website']): ?>
+                            | Website: <?php echo htmlspecialchars($personal_info['website']); ?>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
         
