@@ -119,10 +119,14 @@
         }
         
         @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
             body {
                 background: white;
             }
-            
+
             .page {
                 margin: 0;
                 box-shadow: none;

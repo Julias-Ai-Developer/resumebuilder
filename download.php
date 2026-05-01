@@ -30,7 +30,7 @@ $toolbar = '
 <div class="toolbar">
     <a href="resume_form.php?id=' . $resume_id . '"><i class="bi bi-pencil"></i> Edit</a>
     <a href="preview.php?id=' . $resume_id . '"><i class="bi bi-eye"></i> Preview</a>
-    <button onclick="window.print()"><i class="bi bi-filetype-pdf"></i> Save as PDF</button>
+    <button onclick="printOnePage()"><i class="bi bi-filetype-pdf"></i> Save as PDF</button>
 </div>';
 
 echo renderResumeDocument($data, [

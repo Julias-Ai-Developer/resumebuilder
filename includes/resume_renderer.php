@@ -254,8 +254,10 @@ function renderResumeDocument($data, $options = []) {
         .item-subtitle { color: #444; font-weight: 600; margin-top: 1mm; }
         .item-date { color: #777; font-size: 10pt; margin: 1mm 0 2mm; }
         .timeline-item p, .summary-text { line-height: 1.45; margin: 2mm 0; overflow-wrap: anywhere; }
-        .skills-list { display: grid; gap: 3mm; }
-        .skill-row { background: var(--accent); border-left: 4px solid var(--skills); padding: 3mm 4mm; display: flex; justify-content: space-between; gap: 8px; }
+        .skills-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3mm; }
+        .skill-row { background: var(--accent); border-left: 4px solid var(--skills); padding: 3mm 4mm; display: flex; justify-content: space-between; align-items: center; gap: 4px; border-radius: 4px; overflow: hidden; min-width: 0; }
+        .skill-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+        .skill-row small { white-space: nowrap; flex-shrink: 0; opacity: .75; }
         .link-line { overflow-wrap: anywhere; }
         .empty { min-height: 160mm; display: grid; place-items: center; text-align: center; color: #666; padding: 20mm; }
 
@@ -306,6 +308,7 @@ function renderResumeDocument($data, $options = []) {
 
         @page { size: A4; margin: 0; }
         @media print {
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             body { background: white; }
             .toolbar { display: none; }
             .resume-page { width: 210mm; min-height: 297mm; margin: 0; box-shadow: none; }
@@ -359,10 +362,36 @@ function renderResumeDocument($data, $options = []) {
         </div>
     <?php endif; ?>
 </div>
+<script>
+function printOnePage() {
+    var page = document.querySelector('.resume-page');
+    if (!page) { window.print(); return; }
+
+    // Temporarily expose overflow to measure real content height
+    var prevOverflow = page.style.overflow;
+    page.style.overflow = 'visible';
+    var contentH = page.scrollHeight;
+    page.style.overflow = prevOverflow;
+
+    // A4 height in CSS pixels at 96 dpi (~1122 px)
+    var a4Px = 297 / 25.4 * 96;
+
+    if (contentH > a4Px) {
+        page.style.zoom = a4Px / contentH;
+    }
+
+    window.addEventListener('afterprint', function cleanup() {
+        page.style.zoom = '';
+        window.removeEventListener('afterprint', cleanup);
+    });
+
+    window.print();
+}
+</script>
 <?php if ($autoPrint): ?>
 <script>
 window.addEventListener('load', function () {
-    window.print();
+    printOnePage();
 });
 </script>
 <?php endif; ?>

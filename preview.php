@@ -31,7 +31,7 @@ $toolbar = '
 <div class="toolbar">
     <a href="resume_form.php?id=' . $resume_id . '"><i class="bi bi-pencil"></i> Edit</a>
     <a href="download.php?id=' . $resume_id . '"><i class="bi bi-filetype-pdf"></i> Download PDF</a>
-    <button onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+    <button onclick="printOnePage()"><i class="bi bi-printer"></i> Print</button>
 </div>';
 
 echo renderResumeDocument($data, [

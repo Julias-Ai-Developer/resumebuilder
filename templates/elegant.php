@@ -178,10 +178,14 @@
         }
         
         @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
             body {
                 background: white;
             }
-            
+
             .container {
                 box-shadow: none;
                 margin: 0;

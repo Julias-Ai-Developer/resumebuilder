@@ -205,10 +205,14 @@
         }
         
         @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
             body {
                 background: white;
             }
-            
+
             .resume {
                 box-shadow: none;
                 margin: 0;
